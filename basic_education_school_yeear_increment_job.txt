@@ -1,0 +1,132 @@
+ALTER PROCEDURE [dbo].[pr_lw3_basic_education_year_increment_job]
+@academic_year_id int
+AS
+
+--let's move pre-kinder to kinder
+UPDATE lw3_student
+SET year_level_id = year_level_id + 1
+WHERE student_id IN (
+					SELECT ss.student_id
+					FROM lw3_student_section ss
+					LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = ss.student_id
+					LEFT JOIN lw3_section_offering so ON so.section_offering_id = ss.section_offering_id
+					LEFT JOIN lw3_year_level yl ON yl.year_level_id = so.year_level_id
+					WHERE sp.educational_level_id = 26 AND
+						  sp.statuscode = 3600 AND
+						  ss.academic_year_id = @academic_year_id AND
+						  yl.year_level_id IN (1)
+					)
+					
+--let's move kinder to grade one
+UPDATE lw3_student
+SET year_level_id = year_level_id + 1
+WHERE student_id IN (
+			SELECT ss.student_id
+			FROM lw3_student_section ss
+			LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = ss.student_id
+			LEFT JOIN lw3_section_offering so ON so.section_offering_id = ss.section_offering_id
+			LEFT JOIN lw3_year_level yl ON yl.year_level_id = so.year_level_id
+			WHERE sp.educational_level_id = 26 AND
+				  sp.statuscode = 3600 AND
+				  ss.academic_year_id = @academic_year_id AND
+				  yl.year_level_id IN (2)
+			)
+UPDATE lw3_student_permanent_record
+SET educational_level_id = 27
+WHERE student_id IN (
+			SELECT ss.student_id
+			FROM lw3_student_section ss
+			LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = ss.student_id
+			LEFT JOIN lw3_section_offering so ON so.section_offering_id = ss.section_offering_id
+			LEFT JOIN lw3_year_level yl ON yl.year_level_id = so.year_level_id
+			WHERE sp.educational_level_id = 26 AND
+				  sp.statuscode = 3600 AND
+				  ss.academic_year_id = @academic_year_id AND
+				  yl.year_level_id IN (2)
+			)
+			
+--let's increment grade 1 to grade 5
+UPDATE lw3_student
+SET year_level_id = year_level_id + 1
+WHERE student_id IN (
+				SELECT ss.student_id
+				FROM lw3_student_section ss
+				LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = ss.student_id
+				LEFT JOIN lw3_section_offering so ON so.section_offering_id = ss.section_offering_id
+				LEFT JOIN lw3_year_level yl ON yl.year_level_id = so.year_level_id
+				WHERE sp.educational_level_id = 27 AND
+				  sp.statuscode = 3600 AND
+				  ss.academic_year_id = @academic_year_id AND
+				  yl.year_level_id IN (3,4,5,6,7)
+				) 
+				
+--let's move grade 6 to first year high school
+UPDATE lw3_student
+SET year_level_id = year_level_id + 1
+WHERE student_id IN (
+				SELECT ss.student_id
+				FROM lw3_student_section ss
+				LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = ss.student_id
+				LEFT JOIN lw3_section_offering so ON so.section_offering_id = ss.section_offering_id
+				LEFT JOIN lw3_year_level yl ON yl.year_level_id = so.year_level_id
+				WHERE sp.educational_level_id = 27 AND
+				  sp.statuscode = 3600 AND
+				  ss.academic_year_id = @academic_year_id AND
+				  yl.year_level_id IN (8)
+				)
+UPDATE lw3_student_permanent_record
+SET educational_level_id = 28
+WHERE student_id IN (
+			SELECT ss.student_id
+			FROM lw3_student_section ss
+			LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = ss.student_id
+			LEFT JOIN lw3_section_offering so ON so.section_offering_id = ss.section_offering_id
+			LEFT JOIN lw3_year_level yl ON yl.year_level_id = so.year_level_id
+			WHERE sp.educational_level_id = 27 AND
+				  sp.statuscode = 3600 AND
+				  ss.academic_year_id = @academic_year_id AND
+				  yl.year_level_id IN (8)
+			)
+			
+--let's increment grade 7 to grade 9
+UPDATE lw3_student
+SET year_level_id = year_level_id + 1
+WHERE student_id IN (
+				SELECT ss.student_id
+				FROM lw3_student_section ss
+				LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = ss.student_id
+				LEFT JOIN lw3_section_offering so ON so.section_offering_id = ss.section_offering_id
+				LEFT JOIN lw3_year_level yl ON yl.year_level_id = so.year_level_id
+				WHERE sp.educational_level_id = 28 AND
+				  sp.statuscode = 3600 AND
+				  ss.academic_year_id = @academic_year_id AND
+				  yl.year_level_id IN (9,10,11)
+				) 
+				
+--let's move grade 10 to Grade 11
+UPDATE lw3_student
+SET year_level_id = year_level_id + 1
+WHERE student_id IN (
+				SELECT ss.student_id
+				FROM lw3_student_section ss
+				LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = ss.student_id
+				LEFT JOIN lw3_section_offering so ON so.section_offering_id = ss.section_offering_id
+				LEFT JOIN lw3_year_level yl ON yl.year_level_id = so.year_level_id
+				WHERE sp.educational_level_id = 28 AND
+				  sp.statuscode = 3600 AND
+				  ss.academic_year_id = @academic_year_id AND
+				  yl.year_level_id IN (12)
+				)
+UPDATE lw3_student_permanent_record
+SET educational_level_id = 32
+WHERE student_id IN (
+			SELECT ss.student_id
+			FROM lw3_student_section ss
+			LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = ss.student_id
+			LEFT JOIN lw3_section_offering so ON so.section_offering_id = ss.section_offering_id
+			LEFT JOIN lw3_year_level yl ON yl.year_level_id = so.year_level_id
+			WHERE sp.educational_level_id = 28 AND
+				  sp.statuscode = 3600 AND
+				  ss.academic_year_id = @academic_year_id AND
+				  yl.year_level_id IN (12)
+			)
