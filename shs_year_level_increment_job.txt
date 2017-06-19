@@ -1,0 +1,17 @@
+CREATE PROCEDURE pr_lw3_shs_year_increment_job
+@academic_year_id int
+AS
+
+	--For Grade 11 students (Grade 11 - Grade 12 incrementation)
+	UPDATE lw3_student
+	SET year_level_id = year_level_id + 1
+	WHERE student_id IN (
+					SELECT ss.student_id
+					FROM lw3_student_section ss
+					LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = ss.student_id
+					LEFT JOIN lw3_section_offering so ON so.section_offering_id = ss.section_offering_id
+					LEFT JOIN lw3_year_level yl ON yl.year_level_id = so.year_level_id
+					WHERE sp.educational_level_id = 32 AND
+						  sp.statuscode = 3600 AND
+						  ss.academic_year_id = @academic_year_id AND
+						  yl.year_level_id IN (13))

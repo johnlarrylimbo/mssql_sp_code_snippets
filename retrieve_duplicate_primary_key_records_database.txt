@@ -1,0 +1,9 @@
+Select *  From table
+Where field_1In 
+(Select 
+field_1
+From 
+table
+Group by field_1
+Having Count(*) > 1
+)
