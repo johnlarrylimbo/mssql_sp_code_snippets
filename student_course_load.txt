@@ -1,0 +1,147 @@
+ALTER PROCEDURE [dbo].[pr_lw3_student_course_load]
+@class_id int,
+@student_id	int,
+@semester_id int,
+@academic_year_id int,
+@n_sem int,
+@department_id int,
+@year_level_id int
+AS
+DECLARE @student_course_id int
+IF @department_id = 3
+	BEGIN
+		IF @n_sem = 1
+			BEGIN 
+				IF NOT EXISTS(SELECT student_course_id FROM lw3_student_enrolled_course WHERE class_id = @class_id AND student_id = @student_id)
+					BEGIN
+						
+						INSERT INTO lw3_student_enrolled_course(class_id, student_id, student_year_level, semester_id, academic_year_id, datetime_created, statuscode)
+						VALUES(@class_id, @student_id, @year_level_id, @semester_id, @academic_year_id, GETDATE(), '3500')
+						
+						SET @student_course_id = SCOPE_IDENTITY()
+						
+						INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+						VALUES(@student_course_id , '1', '50', GETDATE(), '3401')
+						
+						INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+						VALUES(@student_course_id , '2', '50', GETDATE(), '3401')
+						
+						
+					END
+			END
+		ELSE IF @n_sem = 2
+			BEGIN 
+				IF NOT EXISTS(SELECT student_course_id FROM lw3_student_enrolled_course WHERE class_id = @class_id AND student_id = @student_id)
+					BEGIN
+						
+						INSERT INTO lw3_student_enrolled_course(class_id, student_id, student_year_level, semester_id, academic_year_id, datetime_created, statuscode)
+						VALUES(@class_id, @student_id, @year_level_id, @semester_id, @academic_year_id, GETDATE(), '3500')
+						
+						SET @student_course_id = SCOPE_IDENTITY()
+						
+						INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+						VALUES(@student_course_id , '3', '50', GETDATE(), '3401')
+						
+						INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+						VALUES(@student_course_id , '4', '50', GETDATE(), '3401')
+						
+						
+					END
+			END
+	END
+ELSE IF  @department_id = 1 OR @department_id = 4
+	BEGIN
+		IF @n_sem = 1
+			BEGIN 
+				IF NOT EXISTS(SELECT student_course_id FROM lw3_student_enrolled_course WHERE class_id = @class_id AND student_id = @student_id)
+					BEGIN
+						
+						INSERT INTO lw3_student_enrolled_course(class_id, student_id, semester_id, academic_year_id, datetime_created, statuscode)
+						VALUES(@class_id, @student_id, @semester_id, @academic_year_id, GETDATE(), '3500')
+						
+						SET @student_course_id = SCOPE_IDENTITY()
+						
+						INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+						VALUES(@student_course_id , '5', '50', GETDATE(), '3401')
+						
+						INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+						VALUES(@student_course_id , '6', '50', GETDATE(), '3401')
+						
+						INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+						VALUES(@student_course_id , '7', '50', GETDATE(), '3401')
+						
+						
+					END
+			END
+		ELSE IF @n_sem = 2
+			BEGIN 
+				IF NOT EXISTS(SELECT student_course_id FROM lw3_student_enrolled_course WHERE class_id = @class_id AND student_id = @student_id)
+					BEGIN
+						
+						INSERT INTO lw3_student_enrolled_course(class_id, student_id, semester_id, academic_year_id, datetime_created, statuscode)
+						VALUES(@class_id, @student_id, @semester_id, @academic_year_id, GETDATE(), '3500')
+						
+						SET @student_course_id = SCOPE_IDENTITY()
+						
+						INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+						VALUES(@student_course_id , '5', '50', GETDATE(), '3401')
+						
+						INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+						VALUES(@student_course_id , '6', '50', GETDATE(), '3401')
+						
+						INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+						VALUES(@student_course_id , '7', '50', GETDATE(), '3401')
+						
+						
+						
+					END
+			END
+		ELSE IF @n_sem = 9
+			BEGIN 
+				IF NOT EXISTS(SELECT student_course_id FROM lw3_student_enrolled_course WHERE class_id = @class_id AND student_id = @student_id)
+					BEGIN
+						
+						INSERT INTO lw3_student_enrolled_course(class_id, student_id, semester_id, academic_year_id, datetime_created, statuscode)
+						VALUES(@class_id, @student_id, @semester_id, @academic_year_id, GETDATE(), '3500')
+						
+						SET @student_course_id = SCOPE_IDENTITY()
+						
+						INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+						VALUES(@student_course_id , '5', '50', GETDATE(), '3401')
+						
+						INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+						VALUES(@student_course_id , '6', '50', GETDATE(), '3401')
+						
+						INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+						VALUES(@student_course_id , '7', '50', GETDATE(), '3401')
+						
+						
+						
+					END
+			END
+	END
+IF @department_id = 2
+	BEGIN 
+		IF NOT EXISTS(SELECT student_course_id FROM lw3_student_enrolled_course WHERE class_id = @class_id AND student_id = @student_id)
+			BEGIN
+						
+				INSERT INTO lw3_student_enrolled_course(class_id, student_id, semester_id, academic_year_id, datetime_created, statuscode)
+						VALUES(@class_id, @student_id, @semester_id, @academic_year_id, GETDATE(), '3500')
+						
+				SET @student_course_id = SCOPE_IDENTITY()
+						
+				INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+				VALUES(@student_course_id , '11', '50', GETDATE(), '3401')
+						
+				INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+				VALUES(@student_course_id , '12', '50', GETDATE(), '3401')
+				
+				INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+				VALUES(@student_course_id , '13', '50', GETDATE(), '3401')
+						
+				INSERT INTO lw3_student_course_grade(student_course_id, period_id, grade, datetime_created, statuscode)
+				VALUES(@student_course_id , '14', '50', GETDATE(), '3401')
+				
+						
+			END
+	END
