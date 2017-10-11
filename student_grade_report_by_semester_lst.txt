@@ -1,0 +1,527 @@
+ALTER PROCEDURE [dbo].[pr_lw3_student_grade_report_by_semester_lst]
+@department_id int,
+@semester_id int,
+@quarter_id int,
+@n_sem int,
+@year_level_id int,
+@campus_id int
+AS
+DECLARE @campus int
+
+SELECT @campus = campus_id
+FROM lw3_campus
+WHERE campus_id = @campus_id
+
+IF @quarter_id = 1
+BEGIN
+	DECLARE @count int
+
+	SELECT 
+		@count = COUNT(s.student_id)
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id
+	GROUP BY s.student_id
+	
+	--DECLARE @average float
+	DECLARE @two table (student_id int, grade float)
+	INSERT INTO @two 
+	SELECT
+		s.student_id,
+		SUM(sc.grade)/@count AS grade
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN lw3_class c ON c.class_id = s.class_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = c.section_offering_id
+	LEFT JOIN lw3_section sec On sec.section_id = so.section_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id AND sec.campus_id = @campus
+	--AND sc.grade>= '85'
+	GROUP BY s.student_id
+	ORDER BY s.student_id
+
+	DECLARE @tmp table(student_id INT, rank VARCHAR(50))
+	INSERT INTO @tmp
+	SELECT 
+		s.student_id,
+		--CASE 
+		--	WHEN  MIN(sc.grade) >= 87 AND tw.grade >= 89
+		--		THEN 'First Honor'
+		--	WHEN MIN(sc.grade) >= 86 AND tw.grade >= 88
+		--		THEN 'Second Honor'
+		--	WHEN MIN(sc.grade) >= 85 AND tw.grade >= 87
+		--		THEN 'Third Honor'
+		--END AS [rank]
+		CASE 
+			WHEN  MIN(sc.grade) >= 85 AND (tw.grade >= 98 AND tw.grade <= 100)
+				THEN 'Highest Honor'
+			WHEN MIN(sc.grade) >= 85 AND (tw.grade >= 95 AND tw.grade <= 97)
+				THEN 'High Honor'
+			WHEN MIN(sc.grade) >= 85 AND (tw.grade >= 90 AND tw.grade <= 94)
+				THEN 'Honor'
+			ELSE 'Not Available'
+		END AS [rank]
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN @two tw ON tw.student_id = s.student_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id
+	GROUP BY s.student_id, tw.grade
+	ORDER BY rank ASC
+	
+	SELECT
+		s.student_id,
+		MIN(sc.grade) AS min_grade,
+		CONVERT(DECIMAL(10,2),tw.grade) AS average,
+		ls.lastname,
+		ls.firstname,
+		LEFT(ls.middlename, 1) AS middlename,
+		ls.student_number,
+		tmp.rank AS [rank],
+		d.code,
+		sem.description AS semester_description,
+		CASE 
+			WHEN sc.period_id = 1
+				THEN 'First Quarter'
+			WHEN sc.period_id = 2
+				THEN 'Second Quarter'
+			WHEN sc.period_id = 3
+				THEN 'Third Quarter'
+			WHEN sc.period_id = 4
+				THEN 'Fourth Quarter'
+		END AS [quarter],
+		UPPER(dp.description) AS department_title
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN @two tw ON tw.student_id = s.student_id
+	LEFT JOIN lw3_student ls ON ls.student_id = s.student_id
+	LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = ls.student_id
+	LEFT JOIN lw3_degree_program d ON d.degree_program_id = sp.degree_program_id
+	LEFT JOIN lw3_department dp ON dp.department_id = d.department_id
+	LEFT JOIN @tmp tmp ON tmp.student_id = s.student_id
+	LEFT JOIN lw3_semester sem ON sem.semester_id = s.semester_id
+	LEFT JOIN lw3_class c ON c.class_id = s.class_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = c.section_offering_id
+	LEFT JOIN lw3_section sec On sec.section_id = so.section_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id AND tmp.rank != '' 
+			AND s.student_year_level = @year_level_id AND sec.campus_id  = @campus
+	GROUP BY s.student_id, tw.grade, ls.firstname, ls.middlename, ls.lastname, ls.student_number, d.code, tmp.rank,
+			sem.description, sc.period_id, dp.description
+	ORDER BY ls.lastname ASC
+END
+ELSE IF @quarter_id = 2 
+BEGIN
+	DECLARE @count2 int
+
+	SELECT 
+		@count2 = COUNT(s.student_id)
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN lw3_class c ON c.class_id = s.class_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = c.section_offering_id
+	LEFT JOIN lw3_section sec On sec.section_id = so.section_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id AND sec.campus_id = @campus
+	GROUP BY s.student_id
+	
+	DECLARE @average2 float
+	
+	DECLARE @two2 table (student_id int, grade float)
+	INSERT INTO @two2 SELECT
+		s.student_id,
+		SUM(sc.grade)/@count2 AS grade
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN lw3_class c ON c.class_id = s.class_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = c.section_offering_id
+	LEFT JOIN lw3_section sec On sec.section_id = so.section_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id AND sec.campus_id = @campus
+	GROUP BY s.student_id
+	ORDER BY s.student_id
+
+	DECLARE @tmp2 table(student_id INT, rank VARCHAR(50))
+	INSERT INTO @tmp2
+	SELECT 
+		s.student_id,
+		--CASE 
+		--	WHEN  MIN(sc.grade) >= 89 AND tw.grade >= 91
+		--		THEN 'First Honor'
+		--	WHEN MIN(sc.grade) >= 87 AND tw.grade >= 89
+		--		THEN 'Second Honor'
+		--	WHEN MIN(sc.grade) >= 86 AND tw.grade >= 88
+		--		THEN 'Third Honor'
+		--END AS [rank]
+		CASE 
+			WHEN  MIN(sc.grade) >= 85 AND (tw.grade >= 98 AND tw.grade <= 100)
+				THEN 'Highest Honor'
+			WHEN MIN(sc.grade) >= 85 AND (tw.grade >= 95 AND tw.grade <= 97)
+				THEN 'High Honor'
+			WHEN MIN(sc.grade) >= 85 AND (tw.grade >= 90 AND tw.grade <= 94)
+				THEN 'Honor'
+			ELSE 'Not Available'
+		END AS [rank]
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN @two2 tw ON tw.student_id = s.student_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id
+	GROUP BY s.student_id, tw.grade
+	ORDER BY rank ASC
+	
+	SELECT
+		s.student_id,
+		MIN(sc.grade) AS min_grade,
+		CONVERT(DECIMAL(10,2),tw.grade) AS average,
+		ls.lastname,
+		ls.firstname,
+		LEFT(ls.middlename, 1) AS middlename,
+		ls.student_number,
+		tmp.rank AS [rank],
+		d.code,
+		sem.description AS semester_description,
+		CASE 
+			WHEN sc.period_id = 1
+				THEN 'First Quarter'
+			WHEN sc.period_id = 2
+				THEN 'Second Quarter'
+			WHEN sc.period_id = 3
+				THEN 'Third Quarter'
+			WHEN sc.period_id = 4
+				THEN 'Fourth Quarter'
+		END AS [quarter],
+		UPPER(dp.description) AS department_title
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN @two2 tw ON tw.student_id = s.student_id
+	LEFT JOIN lw3_student ls ON ls.student_id = s.student_id
+	LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = ls.student_id
+	LEFT JOIN lw3_degree_program d ON d.degree_program_id = sp.degree_program_id
+	LEFT JOIN @tmp2 tmp ON tmp.student_id = s.student_id
+	LEFT JOIN lw3_semester sem ON sem.semester_id = s.semester_id
+	LEFT JOIN lw3_department dp ON dp.department_id = d.department_id
+	LEFT JOIN lw3_class c ON c.class_id = s.class_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = c.section_offering_id
+	LEFT JOIN lw3_section sec On sec.section_id = so.section_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id AND tmp.rank != '' AND s.student_year_level = @year_level_id AND sec.campus_id = @campus
+	GROUP BY s.student_id, tw.grade, ls.firstname, ls.middlename, ls.lastname, ls.student_number, d.code, tmp.rank,
+			sem.description, sc.period_id, dp.description
+	ORDER BY ls.lastname ASC
+END
+ELSE IF @quarter_id = 3 
+BEGIN
+
+	DECLARE @count3 table(student_id int, cnt int)
+	INSERT INTO @count3
+	SELECT 
+		s.student_id,
+		COUNT(s.student_id) AS cnt
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN lw3_class c ON c.class_id = s.class_id
+	LEFT JOIN lw3_course_offering co ON co.course_offering_id = c.course_offering_id
+	LEFT JOIN lw3_curriculum_detail cd ON cd.curriculum_detail_id = co.curriculum_detail_id
+	LEFT JOIN lw3_course cu ON cu.course_id = cd.course_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = c.section_offering_id
+	LEFT JOIN lw3_section sec On sec.section_id = so.section_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id AND cu.code != 'CC' AND sec.campus_id = @campus
+	GROUP BY s.student_id
+	
+	
+	--DECLARE @average3 float
+	DECLARE @two3 table (student_id int, grade float)
+	INSERT INTO @two3 SELECT
+		s.student_id,
+		SUM(sc.grade)/c3.cnt AS grade
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN lw3_class c ON c.class_id = s.class_id
+	LEFT JOIN lw3_course_offering co ON co.course_offering_id = c.course_offering_id
+	LEFT JOIN lw3_curriculum_detail cd ON cd.curriculum_detail_id = co.curriculum_detail_id
+	LEFT JOIN @count3 c3 ON c3.student_id = s.student_id
+	LEFT JOIN lw3_course cu ON cu.course_id = cd.course_id
+	LEFT JOIN lw3_class cl ON cl.class_id = s.class_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = cl.section_offering_id
+	LEFT JOIN lw3_section sec On sec.section_id = so.section_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id AND cu.code != 'CC' AND sec.campus_id = @campus
+	GROUP BY s.student_id, c3.cnt
+	ORDER BY s.student_id
+
+	DECLARE @tmp3 table(student_id INT, rank VARCHAR(50))
+	INSERT INTO @tmp3
+	SELECT 
+		s.student_id,
+		--CASE 
+		--	WHEN  MIN(sc.grade) >= 91 AND tw.grade >= 93
+		--		THEN 'First Honor'
+		--	WHEN MIN(sc.grade) >= 89 AND tw.grade >= 91
+		--		THEN 'Second Honor'
+		--	WHEN MIN(sc.grade) >= 87 AND tw.grade >= 89
+		--		THEN 'Third Honor'
+		--END AS [rank]
+		CASE 
+			WHEN  MIN(sc.grade) >= 85 AND (tw.grade >= 98 AND tw.grade <= 100)
+				THEN 'Highest Honor'
+			WHEN MIN(sc.grade) >= 85 AND (tw.grade >= 95 AND tw.grade <= 97)
+				THEN 'High Honor'
+			WHEN MIN(sc.grade) >= 85 AND (tw.grade >= 90 AND tw.grade <= 94)
+				THEN 'Honor'
+			ELSE 'Not Available'
+		END AS [rank]
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN @two3 tw ON tw.student_id = s.student_id
+	LEFT JOIN lw3_class c ON c.class_id = s.class_id
+	LEFT JOIN lw3_course_offering co ON co.course_offering_id = c.course_offering_id
+	LEFT JOIN lw3_curriculum_detail cd ON cd.curriculum_detail_id = co.curriculum_detail_id
+	LEFT JOIN lw3_course cu ON cu.course_id = cd.course_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id AND cu.code != 'CC'
+	GROUP BY s.student_id, tw.grade
+	ORDER BY rank ASC
+	
+	SELECT
+		s.student_id,
+		MIN(sc.grade) AS min_grade,
+		CONVERT(DECIMAL(10,2),tw.grade) AS average,
+		ls.lastname,
+		ls.firstname,
+		LEFT(ls.middlename, 1) AS middlename,
+		ls.student_number,
+		tmp.rank AS [rank],
+		d.code,
+		sem.description AS semester_description,
+		CASE 
+			WHEN sc.period_id = 1
+				THEN 'First Quarter'
+			WHEN sc.period_id = 2
+				THEN 'Second Quarter'
+			WHEN sc.period_id = 3
+				THEN 'Third Quarter'
+			WHEN sc.period_id = 4
+				THEN 'Fourth Quarter'
+		END AS [quarter],
+		UPPER(dp.description) AS department_title
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN @two3 tw ON tw.student_id = s.student_id
+	LEFT JOIN lw3_student ls ON ls.student_id = s.student_id
+	LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = ls.student_id
+	LEFT JOIN lw3_degree_program d ON d.degree_program_id = sp.degree_program_id
+	LEFT JOIN @tmp3 tmp ON tmp.student_id = s.student_id
+	LEFT JOIN lw3_semester sem ON sem.semester_id = s.semester_id
+	LEFT JOIN lw3_class c ON c.class_id = s.class_id
+	LEFT JOIN lw3_course_offering co ON co.course_offering_id = c.course_offering_id
+	LEFT JOIN lw3_curriculum_detail cd ON cd.curriculum_detail_id = co.curriculum_detail_id
+	LEFT JOIN lw3_department dp ON dp.department_id = d.department_id
+	LEFT JOIN lw3_course cu ON cu.course_id = cd.course_id
+	LEFT JOIN lw3_class cl ON cl.class_id = s.class_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = cl.section_offering_id
+	LEFT JOIN lw3_section sec On sec.section_id = so.section_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id AND tmp.rank != '' AND cu.code != 'CC' AND s.student_year_level = @year_level_id AND sec.campus_id = @campus
+	GROUP BY s.student_id, tw.grade, ls.firstname, ls.middlename, ls.lastname, ls.student_number, d.code, tmp.rank,
+			sem.description, sc.period_id, dp.description
+	ORDER BY ls.lastname ASC
+END
+ELSE IF @quarter_id = 4
+BEGIN
+	DECLARE @count4 int
+
+	SELECT 
+		@count4 = COUNT(s.student_id)
+		--COUNT(s.student_id)
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN lw3_class c ON c.class_id = s.class_id
+	LEFT JOIN lw3_course_offering co ON co.course_offering_id = c.course_offering_id
+	LEFT JOIN lw3_curriculum_detail cd ON cd.curriculum_detail_id = co.curriculum_detail_id
+	LEFT JOIN lw3_course cu ON cu.course_id = cd.course_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = c.section_offering_id
+	LEFT JOIN lw3_section sec On sec.section_id = so.section_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id AND cu.code != 'CC' AND sec.campus_id = @campus
+	GROUP BY s.student_id
+	
+	
+	--DECLARE @average4 float
+	DECLARE @two4 table (student_id int, grade float)
+	INSERT INTO @two4 SELECT
+		s.student_id,
+		SUM(sc.grade)/@count4 AS grade
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN lw3_class c ON c.class_id = s.class_id
+	LEFT JOIN lw3_course_offering co ON co.course_offering_id = c.course_offering_id
+	LEFT JOIN lw3_curriculum_detail cd ON cd.curriculum_detail_id = co.curriculum_detail_id
+	LEFT JOIN lw3_course cu ON cu.course_id = cd.course_id
+	LEFT JOIN lw3_class cl ON cl.class_id = s.class_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = cl.section_offering_id
+	LEFT JOIN lw3_section sec On sec.section_id = so.section_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id AND cu.code != 'CC' AND sec.campus_id = @campus
+	GROUP BY s.student_id
+	ORDER BY s.student_id
+
+	DECLARE @tmp4 table(student_id INT, rank VARCHAR(50))
+	INSERT INTO @tmp4
+	SELECT 
+		s.student_id,
+		--CASE 
+		--	WHEN  MIN(sc.grade) >= 92 AND tw.grade >= 94
+		--		THEN 'First Honor'
+		--	WHEN MIN(sc.grade) >= 90 AND tw.grade >= 92
+		--		THEN 'Second Honor'
+		--	WHEN MIN(sc.grade) >= 88 AND tw.grade >= 90
+		--		THEN 'Third Honor'
+		--END AS [rank]
+		CASE 
+			WHEN  MIN(sc.grade) >= 85 AND (tw.grade >= 98 AND tw.grade <= 100)
+				THEN 'Highest Honor'
+			WHEN MIN(sc.grade) >= 85 AND (tw.grade >= 95 AND tw.grade <= 97)
+				THEN 'High Honor'
+			WHEN MIN(sc.grade) >= 85 AND (tw.grade >= 90 AND tw.grade <= 94)
+				THEN 'Honor'
+			ELSE 'Not Available'
+		END AS [rank]
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN @two4 tw ON tw.student_id = s.student_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id
+	GROUP BY s.student_id, tw.grade
+	ORDER BY rank ASC
+	
+	SELECT
+		s.student_id,
+		MIN(sc.grade) AS min_grade,
+		CONVERT(DECIMAL(10,2),tw.grade) AS average,
+		ls.lastname,
+		ls.firstname,
+		LEFT(ls.middlename, 1) AS middlename,
+		ls.student_number,
+		tmp.rank AS [rank],
+		d.code,
+		sem.description AS semester_description,
+		CASE 
+			WHEN sc.period_id = 1
+				THEN 'First Quarter'
+			WHEN sc.period_id = 2
+				THEN 'Second Quarter'
+			WHEN sc.period_id = 3
+				THEN 'Third Quarter'
+			WHEN sc.period_id = 4
+				THEN 'Fourth Quarter'
+		END AS [quarter],
+		UPPER(dp.description) AS department_title
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN @two4 tw ON tw.student_id = s.student_id
+	LEFT JOIN lw3_student ls ON ls.student_id = s.student_id
+	LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = ls.student_id
+	LEFT JOIN lw3_degree_program d ON d.degree_program_id = sp.degree_program_id
+	LEFT JOIN @tmp4 tmp ON tmp.student_id = s.student_id
+	LEFT JOIN lw3_semester sem ON sem.semester_id = s.semester_id
+	LEFT JOIN lw3_department dp ON dp.department_id = d.department_id
+	LEFT JOIN lw3_class c ON c.class_id = s.class_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = c.section_offering_id
+	LEFT JOIN lw3_section sec On sec.section_id = so.section_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id AND tmp.rank != '' AND s.student_year_level = @year_level_id AND sec.campus_id = @campus
+	GROUP BY s.student_id, tw.grade, ls.firstname, ls.middlename, ls.lastname, ls.student_number, d.code, tmp.rank,
+			sem.description, sc.period_id, dp.description
+	ORDER BY ls.lastname ASC
+END
+ELSE 
+BEGIN
+	DECLARE @count5 int
+
+	SELECT 
+		@count4 = COUNT(s.student_id)
+		--COUNT(s.student_id)
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN lw3_class c ON c.class_id = s.class_id
+	LEFT JOIN lw3_course_offering co ON co.course_offering_id = c.course_offering_id
+	LEFT JOIN lw3_curriculum_detail cd ON cd.curriculum_detail_id = co.curriculum_detail_id
+	LEFT JOIN lw3_course cu ON cu.course_id = cd.course_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = c.section_offering_id
+	LEFT JOIN lw3_section sec On sec.section_id = so.section_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id AND cu.code != 'CC' AND sec.campus_id = @campus
+	GROUP BY s.student_id
+	
+	
+	--DECLARE @average5 float
+	DECLARE @two5 table (student_id int, grade float)
+	INSERT INTO @two5 SELECT
+		s.student_id,
+		SUM(sc.grade)/@count5 AS grade
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN lw3_class c ON c.class_id = s.class_id
+	LEFT JOIN lw3_course_offering co ON co.course_offering_id = c.course_offering_id
+	LEFT JOIN lw3_curriculum_detail cd ON cd.curriculum_detail_id = co.curriculum_detail_id
+	LEFT JOIN lw3_course cu ON cu.course_id = cd.course_id
+	LEFT JOIN lw3_class cl ON cl.class_id = s.class_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = cl.section_offering_id
+	LEFT JOIN lw3_section sec On sec.section_id = so.section_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id AND cu.code != 'CC' AND sec.campus_id = @campus
+	GROUP BY s.student_id
+	ORDER BY s.student_id
+
+	DECLARE @tmp5 table(student_id INT, rank VARCHAR(50))
+	INSERT INTO @tmp5
+	SELECT 
+		s.student_id,
+		--CASE 
+		--	WHEN  MIN(sc.grade) >= 92 AND tw.grade >= 94
+		--		THEN 'First Honor'
+		--	WHEN MIN(sc.grade) >= 90 AND tw.grade >= 92
+		--		THEN 'Second Honor'
+		--	WHEN MIN(sc.grade) >= 88 AND tw.grade >= 90
+		--		THEN 'Third Honor'
+		--END AS [rank]
+		CASE 
+			WHEN  MIN(sc.grade) >= 85 AND (tw.grade >= 98 AND tw.grade <= 100)
+				THEN 'Highest Honor'
+			WHEN MIN(sc.grade) >= 85 AND (tw.grade >= 95 AND tw.grade <= 97)
+				THEN 'High Honor'
+			WHEN MIN(sc.grade) >= 85 AND (tw.grade >= 90 AND tw.grade <= 94)
+				THEN 'Honor'
+			ELSE 'Not Available'
+		END AS [rank]
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN @two4 tw ON tw.student_id = s.student_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id
+	GROUP BY s.student_id, tw.grade
+	ORDER BY rank ASC
+	
+	SELECT
+		s.student_id,
+		MIN(sc.grade) AS min_grade,
+		CONVERT(DECIMAL(10,2),tw.grade) AS average,
+		ls.lastname,
+		ls.firstname,
+		LEFT(ls.middlename, 1) AS middlename,
+		ls.student_number,
+		tmp.rank AS [rank],
+		d.code,
+		sem.description AS semester_description,
+		CASE 
+			WHEN sc.period_id = 1
+				THEN 'First Quarter'
+			WHEN sc.period_id = 2
+				THEN 'Second Quarter'
+			WHEN sc.period_id = 3
+				THEN 'Third Quarter'
+			WHEN sc.period_id = 4
+				THEN 'Fourth Quarter'
+		END AS [quarter],
+		UPPER(dp.description) AS department_title
+	FROM lw3_student_enrolled_course s
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = s.student_course_id
+	LEFT JOIN @two4 tw ON tw.student_id = s.student_id
+	LEFT JOIN lw3_student ls ON ls.student_id = s.student_id
+	LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = ls.student_id
+	LEFT JOIN lw3_degree_program d ON d.degree_program_id = sp.degree_program_id
+	LEFT JOIN @tmp4 tmp ON tmp.student_id = s.student_id
+	LEFT JOIN lw3_semester sem ON sem.semester_id = s.semester_id
+	LEFT JOIN lw3_department dp ON dp.department_id = d.department_id
+	LEFT JOIN lw3_class c ON c.class_id = s.class_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = c.section_offering_id
+	LEFT JOIN lw3_section sec On sec.section_id = so.section_id
+	WHERE s.semester_id = @semester_id AND sc.period_id = @quarter_id AND tmp.rank != '' AND s.student_year_level = @year_level_id AND sec.campus_id = @campus
+	GROUP BY s.student_id, tw.grade, ls.firstname, ls.middlename, ls.lastname, ls.student_number, d.code, tmp.rank,
+			sem.description, sc.period_id, dp.description
+	ORDER BY ls.lastname ASC
+END
