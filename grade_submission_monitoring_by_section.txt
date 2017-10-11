@@ -1,0 +1,40 @@
+ALTER PROCEDURE [dbo].[pr_lw3_shs_grade_submission_monitoring]
+@department_id	int,
+@semester_id	int,
+@section_id		int,
+@period_id		int
+AS
+
+	DECLARE @tmp table(class_id int, student_count int)
+	INSERT @tmp
+	SELECT
+		c.class_id, COUNT(se.student_course_id) AS student_count
+		--se.student_course_id, se.student_id, sc.grade
+	FROM lw3_class c
+	LEFT JOIN lw3_course_offering co ON co.course_offering_id = c.course_offering_id
+	LEFT JOIN lw3_curriculum_detail cd ON cd.curriculum_detail_id = co.curriculum_detail_id
+	LEFT JOIN lw3_course cu ON cu.course_id = cd.course_id
+	LEFT JOIN lw3_student_enrolled_course se ON se.class_id = c.class_id
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = se.student_course_id
+	WHERE c.semester_id = @semester_id AND c.section_offering_id = @section_id AND sc.period_id = @period_id AND sc.grade = '50'
+	GROUP BY c.class_id
+	
+	SELECT
+		c.class_id, c.class_code, cu.title, sc.period_id, c.section_offering_id,
+		CASE	
+			WHEN t.student_count > 0 THEN 'Incomplete Grades'
+			ELSE 'Submitted'
+		END AS [submission_status], e.lastname, e.firstname
+	FROM lw3_class c
+	LEFT JOIN lw3_course_offering co ON co.course_offering_id = c.course_offering_id
+	LEFT JOIN lw3_curriculum_detail cd ON cd.curriculum_detail_id = co.curriculum_detail_id
+	LEFT JOIN lw3_course cu ON cu.course_id = cd.course_id
+	LEFT JOIN lw3_student_enrolled_course se ON se.class_id = c.class_id
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = se.student_course_id
+	LEFT JOIN @tmp t ON t.class_id = c.class_id
+	LEFT JOIN lw3_employee e ON e.employee_id = c.employee_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = c.section_offering_id
+	LEFT JOIN lw3_section st ON st.section_id = so.section_id
+	WHERE c.semester_id = @semester_id AND c.section_offering_id = @section_id AND sc.period_id = @period_id
+	GROUP BY c.class_id, c.class_code, cu.title, sc.period_id, c.section_offering_id, t.student_count,
+			e.lastname, e.firstname

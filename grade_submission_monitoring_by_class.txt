@@ -1,0 +1,27 @@
+
+ALTER PROCEDURE [dbo].[pr_lw3_shs_grade_submission_monitoring_by_class_id]
+@class_id	int,
+@period_id	int
+AS
+
+	SELECT 
+		c.class_code, cu.title, s.student_number, s.lastname, s.firstname, s.middlename, sc.grade,
+		CASE
+			WHEN sc.grade = '50' THEN 'No Grade'
+			ELSE 'Submitted'
+		END AS submission_monitoring,
+		st.label AS section_label,
+		e.lastname + ', ' + e.firstname AS subject_teacher,
+		p.description AS grading_period
+	FROM lw3_class c
+	LEFT JOIN lw3_student_enrolled_course se ON se.class_id = c.class_id
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = se.student_course_id
+	LEFT JOIN lw3_student s ON s.student_id = se.student_id
+	LEFT JOIN lw3_course_offering co ON co.course_offering_id = c.course_offering_id
+	LEFT JOIN lw3_curriculum_detail cd ON cd.curriculum_detail_id = co.curriculum_detail_id
+	LEFT JOIN lw3_course cu ON cu.course_id = cd.course_id
+	LEFT JOIN lw3_section_offering so ON so.section_offering_id = c.section_offering_id
+	LEFT JOIN lw3_section st ON st.section_id = so.section_id
+	LEFT JOIN lw3_employee e ON e.employee_id = c.employee_id
+	LEFT JOIN lw3_period p ON p.period_id = sc.period_id
+	WHERE c.class_id = @class_id AND sc.period_id = @period_id
