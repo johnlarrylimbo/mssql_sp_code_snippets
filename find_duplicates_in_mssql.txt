@@ -1,0 +1,8 @@
+SELECT column_name1
+FROM table_name AS y
+INNER JOIN
+(SELECT column_name2, COUNT(*) AS CountOf
+FROM table_name
+GROUP BY column_name2
+HAVING (COUNT(*) > 1)) AS dt ON column_name1 = column_name2
+ORDER BY column_name1
