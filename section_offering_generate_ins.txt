@@ -1,0 +1,127 @@
+ALTER PROCEDURE [dbo].[pr_lw3_section_offering_generate_ins]
+@department_id	int, 
+@semester_id	int,
+@academic_year_id	int
+AS
+
+DECLARE @ayear_id int
+DECLARE @c_academic_year_id int
+DECLARE @sem_id int
+DECLARE @f_semester_id int
+DECLARE @course_offering_id int
+DECLARE @course_title varchar(200) -- temp
+DECLARE @current_semester_id int
+DECLARE @current_num_sem int
+DECLARE @cursor CURSOR
+DECLARE @n_sem int
+DECLARE @next_academic_year_id int
+DECLARE @next_semester_id int
+DECLARE @section_id int
+
+IF(@department_id = 1 OR @department_id = 4)
+	BEGIN
+
+		SELECT 
+			@ayear_id = academic_year_id
+		FROM lw3_academic_year
+		WHERE academic_year_id = @academic_year_id
+				
+		SELECT 
+			@next_academic_year_id = academic_year_id + 1
+		FROM lw3_academic_year
+		WHERE academic_year_id = @academic_year_id
+
+		SELECT 
+			@current_semester_id = semester_id, 
+			@current_num_sem = n_sem
+		FROM lw3_semester
+		WHERE semester_id = @semester_id
+				
+		IF @current_num_sem = 1
+			BEGIN
+				SET @cursor = CURSOR FAST_FORWARD FOR
+				SELECT 
+					s.semester_id - 1 AS f_semester_id, s.n_sem, s.semester_id + 1 AS next_semester_id, 
+					s.academic_year_id AS c_academic_year_id
+				FROM lw3_semester s
+				WHERE s.semester_id = @current_semester_id
+			END
+		ELSE IF @current_num_sem = 2
+			BEGIN
+				SET @cursor = CURSOR FAST_FORWARD FOR
+				SELECT 
+					s.semester_id AS f_semester_id, s.n_sem, s.semester_id + 3 AS next_semester_id, 
+					@academic_year_id + 1 AS c_academic_year_id
+				FROM lw3_semester s
+				WHERE s.semester_id = @current_semester_id - 1
+			END
+
+		OPEN @cursor
+
+		FETCH NEXT FROM @cursor  
+		INTO @f_semester_id, @n_sem, @next_semester_id, @c_academic_year_id
+				
+		WHILE @@FETCH_STATUS = 0  
+			BEGIN  
+				   
+				FETCH @cursor INTO @f_semester_id, @n_sem, @next_semester_id, @c_academic_year_id
+
+				INSERT INTO lw3_section_offering
+					(reference_section_offering_id, section_id, department_id, degree_program_id, semester_id, academic_year_id, year_level_id, datetime_created, statuscode)
+				SELECT se.section_offering_id, s.section_id, @department_id, s.degree_program_id, @next_semester_id, @c_academic_year_id, s.year_level_id, GETDATE(), '2901' 
+				FROM lw3_section s
+				LEFT JOIN lw3_section_offering se ON se.section_id = s.section_id
+				WHERE s.department_id = @department_id AND 
+						NOT EXISTS(SELECT so.section_offering_id 
+								   FROM lw3_section_offering so 
+								   WHERE so.department_id = @department_id 
+										AND so.section_id = s.section_id 
+										AND so.academic_year_id = @c_academic_year_id 
+										AND so.semester_id = @next_semester_id)
+				END; 
+
+		CLOSE @cursor;  
+		DEALLOCATE @cursor;
+		 
+	END 
+	
+	--ELSE IF(@department_id = 2)
+					--BEGIN
+						
+					--	INSERT INTO lw3_section_offering
+					--		(section_id, department_id, degree_program_id, semester_id, academic_year_id, year_level_id, datetime_created, statuscode)
+					--	SELECT s.section_id, @department_id, s.degree_program_id, @semester_id, @academic_year_id, s.year_level_id, GETDATE(), '2901' 
+					--	FROM lw3_section s
+					--	WHERE s.department_id = @department_id AND 
+					--			NOT EXISTS(SELECT so.section_offering_id 
+					--						FROM lw3_section_offering so 
+					--						WHERE so.department_id = @department_id AND so.section_id = s.section_id AND 
+					--								so.academic_year_id = @academic_year_id)
+					--END 
+					--ELSE IF(@department_id = 3)
+					--BEGIN
+						
+					--	INSERT INTO lw3_section_offering
+					--		(section_id, department_id, degree_program_id, semester_id, academic_year_id, year_level_id, datetime_created, statuscode)
+					--	SELECT s.section_id, @department_id, s.degree_program_id, @semester_id, @academic_year_id, s.year_level_id, GETDATE(), '2901' 
+					--	FROM lw3_section s
+					--	WHERE s.department_id = @department_id AND 
+					--			NOT EXISTS(SELECT so.section_offering_id 
+					--						FROM lw3_section_offering so 
+					--						WHERE so.department_id = @department_id AND so.section_id = s.section_id AND 
+					--								so.academic_year_id = @academic_year_id AND so.semester_id = @semester_id)
+					--END 
+					--ELSE IF(@department_id = 4)
+					--BEGIN
+						
+					--	INSERT INTO lw3_section_offering
+					--		(section_id, department_id, degree_program_id, semester_id, academic_year_id, year_level_id, datetime_created, statuscode)
+					--	SELECT s.section_id, @department_id, s.degree_program_id, @semester_id, @academic_year_id, s.year_level_id, GETDATE(), '2901' 
+					--	FROM lw3_section s
+					--	WHERE s.department_id = @department_id AND 
+					--			NOT EXISTS(SELECT so.section_offering_id 
+					--						FROM lw3_section_offering so 
+					--						WHERE so.department_id = @department_id AND so.section_id = s.section_id AND 
+					--								so.academic_year_id = @academic_year_id AND so.semester_id = @semester_id)
+					--END
+				
