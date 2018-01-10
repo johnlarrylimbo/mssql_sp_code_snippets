@@ -1,0 +1,139 @@
+ALTER PROCEDURE [dbo].[pr_lw3_student_academic_records_by_student_id_sel]
+@student_id int
+AS
+
+--temporary tables initialization
+DECLARE @department_id int
+DECLARE @temp_credited_course table(student_id int, code varchar(20), title varchar(200), unit_duration varchar(5),
+									academic_year_id int, semester_id int)
+DECLARE @temp_course table (student_id int, duration_unit varchar(5), course_id int)
+DECLARE @table_course_lec_only table(student_id int, course_id int, grade varchar(5))
+DECLARE @table_lab_course table(student_id int, course_id int, title varchar(100), grade varchar(5), unit varchar(3),
+						  period_id int)
+DECLARE @table_lec_course table(student_id int, course_id int, title varchar(100), grade varchar(5), unit varchar(3),
+						  period_id int)
+DECLARE @temp_course_duration_unit table (course_id int, code varchar(20), title varchar(200), duration_unit int)
+DECLARE @tmp_course_avg_grade_with_lab table(course_id int, grade varchar(5))
+
+--select student department
+SELECT
+	@department_id = dp.department_id
+FROM lw3_student_permanent_record s
+LEFT JOIN lw3_degree_program dp ON dp.degree_program_id = s.degree_program_id
+WHERE s.student_id = @student_id AND s.statuscode = 3600
+
+--set condition for all students
+IF @department_id = 1 OR @department_id = 3 OR @department_id = 4 --  for college, senior high school and graduate school
+BEGIN
+
+	--SELECT
+	--	student_id
+	--FROM lw3_credited_course 
+	--WHERE student_id = @student_id
+		  
+	--select all student courses with lec class type
+	INSERT @table_lec_course			  
+	SELECT
+		se.student_id, cu.course_id, cu.title, sc.grade,
+		CASE
+			WHEN cd.lec = 1 THEN 'Lec'
+			WHEN cd.lab = 1 THEN 'Lab'
+		END AS unit,
+		sc.period_id 
+	FROM lw3_student_enrolled_course se
+	LEFT JOIN lw3_class c ON c.class_id = se.class_id
+	LEFT JOIN lw3_course_offering co ON co.course_offering_id = c.course_offering_id
+	LEFT JOIN lw3_curriculum_detail cd ON cd.curriculum_detail_id = co.curriculum_detail_id
+	LEFT JOIN lw3_course cu ON cu.course_id = cd.course_id
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = se.student_course_id
+	WHERE se.student_id = @student_id AND cu.course_id IS NOT NULL AND cd.lec = 1
+	ORDER BY cu.course_id, sc.period_id
+	
+	--select student courses with lab class type
+	INSERT @table_lab_course
+	SELECT
+		se.student_id, cu.course_id, cu.title, sc.grade,
+		CASE
+			WHEN cd.lec = 1 THEN 'Lec'
+			WHEN cd.lab = 1 THEN 'Lab'
+		END AS unit,
+		sc.period_id 
+	FROM lw3_student_enrolled_course se
+	LEFT JOIN lw3_class c ON c.class_id = se.class_id
+	LEFT JOIN lw3_course_offering co ON co.course_offering_id = c.course_offering_id
+	LEFT JOIN lw3_curriculum_detail cd ON cd.curriculum_detail_id = co.curriculum_detail_id
+	LEFT JOIN lw3_course cu ON cu.course_id = cd.course_id
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = se.student_course_id
+	WHERE se.student_id = @student_id AND cu.course_id IS NOT NULL AND cd.lab = 1
+	ORDER BY cu.course_id, sc.period_id
+	
+	--get the average grade of student courses without laboratory
+	INSERT @table_course_lec_only
+	SELECT
+		t1.student_id, t1.course_id, CONVERT(DECIMAL(10,2),SUM(CONVERT(float,t1.grade, 2))/3) AS grade
+	FROM @table_lec_course t1
+	WHERE NOT EXISTS(SELECT t2.course_id FROM @table_lab_course t2 WHERE t2.course_id = t1.course_id)
+	GROUP BY t1.student_id, t1.course_id, t1.title
+	
+	--get the average grade of student courses with laboratory
+	INSERT INTO @tmp_course_avg_grade_with_lab
+	SELECT
+		t1.course_id,
+		CONVERT(DECIMAL(10,2),SUM(CONVERT(DECIMAL(10,2),CONVERT(DECIMAL(10,2),CONVERT(Float,t1.grade, 2) * 0.50) + CONVERT(DECIMAL(10,2),CONVERT(Float,t2.grade, 2) * 0.50)))/3) AS total_grade
+	FROM @table_lec_course t1
+	LEFT JOIN @table_lab_course t2 ON t2.course_id = t1.course_id AND t2.period_id = t1.period_id
+	WHERE t2.title IS NOT NULL
+	GROUP BY t1.course_id, t2.title
+	
+	--get student courses total duration/unit
+	INSERT INTO @temp_course_duration_unit
+	SELECT
+		cu.course_id, cu.code, cu.title, SUM(CONVERT(DECIMAL(10,2),cd.duration_unit)) AS duration_unit
+	FROM lw3_student_enrolled_course se
+	LEFT JOIN lw3_class c ON c.class_id = se.class_id
+	LEFT JOIN lw3_course_offering co ON co.course_offering_id = c.course_offering_id
+	LEFT JOIN lw3_curriculum_detail cd ON cd.curriculum_detail_id = co.curriculum_detail_id
+	LEFT JOIN lw3_course cu ON cu.course_id = cd.course_id
+	WHERE se.student_id = @student_id 
+	GROUP BY cu.course_id, cu.code, cu.title
+	
+	--display all the information from the temporary tables
+	SELECT
+		st.student_number, UPPER(st.lastname) AS lastname, UPPER(st.firstname) AS firstname, st.middlename,
+		sem.description AS semester_description,
+		cu.code, cu.title, CONVERT(DECIMAL(10,2), tc.duration_unit) AS duration_unit,
+		CASE
+			WHEN cu.course_id = t3.course_id THEN t3.grade
+			WHEN cu.course_id = tt2.course_id THEN tt2.grade
+		END AS average,
+		dp.short_label AS degree_program_label,
+		cr.label AS curriculum_label,
+		cu.course_id,
+		dp.department_id,
+		'AY ' + RIGHT(ay.description, 11) AS academic_year_label
+	FROM lw3_student_enrolled_course se
+	LEFT JOIN lw3_class c ON c.class_id = se.class_id
+	LEFT JOIN lw3_course_offering co ON co.course_offering_id = c.course_offering_id
+	LEFT JOIN lw3_curriculum_detail cd ON cd.curriculum_detail_id = co.curriculum_detail_id
+	LEFT JOIN lw3_course cu ON cu.course_id = cd.course_id
+	LEFT JOIN lw3_student_course_grade sc ON sc.student_course_id = se.student_course_id
+	LEFT JOIN @table_lec_course t1 ON t1.course_id = cu.course_id
+	LEFT JOIN @table_lab_course t2 ON t2.course_id = cu.course_id
+	LEFT JOIN @table_course_lec_only t3 ON t3.course_id = cu.course_id
+	LEFT JOIN @tmp_course_avg_grade_with_lab tt2 ON tt2.course_id = cu.course_id
+	LEFT JOIN @temp_course_duration_unit tc ON tc.course_id = cu.course_id
+	LEFT JOIN lw3_semester sem ON sem.semester_id = se.semester_id
+	LEFT JOIN lw3_student st ON st.student_id = se.student_id
+	LEFT JOIN lw3_student_permanent_record sp ON sp.student_id = se.student_id
+	LEFT JOIN lw3_degree_program dp ON dp.degree_program_id = sp.degree_program_id
+	LEFT JOIN lw3_curriculum cr ON cr.curriculum_id = sp.curriculum_id
+	LEFT JOIN lw3_academic_year ay ON ay.academic_year_id = se.academic_year_id
+	WHERE se.student_id = @student_id AND sp.statuscode = 3600
+	GROUP BY 
+			st.student_number, st.lastname, st.firstname, st.middlename,
+			sem.description, cu.code, 
+			cu.title, tt2.grade, t3.course_id, cu.course_id, t3.grade, 
+			tt2.course_id, tc.duration_unit,
+			dp.short_label, cr.label, cu.course_id, dp.department_id,
+			ay.description
+END
